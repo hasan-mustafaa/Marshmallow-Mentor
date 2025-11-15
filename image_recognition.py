@@ -31,7 +31,7 @@ async def ReturnStringy(image_path: str, file=None) -> List[CharacterData]:
     each with a label and bounding box.
     """
     if file:
-        img = file
+        img = Image.open(file.file)
     else:
         print(f"Processing {image_path} for character data...")
         img = Image.open(image_path)

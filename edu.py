@@ -612,18 +612,16 @@ async def analyze_image(file: UploadFile = File(...)):
         newobject = TokenDTO(text=label, bbox=[x1, y1, x2, y2])
         data.append(newobject)
 
-    return json.dumps(
-        AnalyzeImageResponse(
-            equation_str=equation_str,
-            error_type=feedback.error_type,
-            is_correct=feedback.is_correct,
-            correct_value=feedback.correct_value,
-            datapoints=datapoints,
-            annotations=[
-                AnnotationDTO(target=a.target, message=a.message)
-                for a in feedback.annotations
-            ],
-        )
+    return AnalyzeImageResponse(
+        equation_str=equation_str,
+        error_type=feedback.error_type,
+        is_correct=feedback.is_correct,
+        correct_value=feedback.correct_value,
+        datapoints=data,
+        annotations=[
+            AnnotationDTO(target=a.target, message=a.message)
+            for a in feedback.annotations
+        ],
     )
 
 
