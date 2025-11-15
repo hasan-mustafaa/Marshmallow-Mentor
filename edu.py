@@ -602,7 +602,6 @@ async def analyze_image(file: UploadFile = File(...)):
     feedback = analyze_step(equation_str)
     data = []
     datapoints = await ReturnStringy("", file)
-    print(datapoints)
     for datapoint in datapoints:
         label = datapoint.label
         points = datapoint.box

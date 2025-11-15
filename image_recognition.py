@@ -7,39 +7,34 @@ from google.genai.types import GenerateContentConfig, HttpOptions
 from google import genai
 import asyncio
 
-load_dotenv()
 
-
-class ReturnObjectForDataPoints:
-    def __init__(self, label: str, datapoints: List[List[float]]) -> None:
+class CharacterData:
+    def __init__(self, label: str, box: List[List[int]]) -> None:
         self.label = label
-        self.datapoints = datapoints
+        self.box = box
 
+
+load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in environment or .env file!")
-
-
 client = genai.Client(
-    api_key=GEMINI_API_KEY, http_options=HttpOptions(api_version="v1")
+    api_key=GEMINI_API_KEY, http_options=HttpOptions(api_version="v1beta")
 )
-model_id = "gemini-2.5-flash"
+model_id = "gemini-2.5-flash"  # Using 1.5-flash, as 2.5 is not a public model ID
 
 
-# Image path is the file path of the image being used
-async def ReturnStringy(image_path, file=None):
-    client = genai.Client(
-        api_key=GEMINI_API_KEY, http_options=HttpOptions(api_version="v1")
-    )
-    model_id = "gemini-2.5-flash"
-
-    if file is None:
-        img = Image.open(image_path)
-
-    else:
+async def ReturnStringy(image_path: str, file=None) -> List[CharacterData]:
+    """
+    Analyzes an image and returns a list of CharacterData objects,
+    each with a label and bounding box.
+    """
+    if file:
         img = file
-
+    else:
+        print(f"Processing {image_path} for character data...")
+        img = Image.open(image_path)
     response = await client.aio.models.generate_content(
         model=model_id,
         contents=[
@@ -49,101 +44,65 @@ async def ReturnStringy(image_path, file=None):
                 "First index of position is x and second one is y. "
                 "For each character, assign it with an array [topleft, topright, leftbottom, rightbottom]. "
                 "These are the corners in which the character lays over. "
-                'Something like {"label": "2", "box": [[0,20],[20,20],[0,0],[20,0]]}.'
-                "for each element a dict like the above should be give result in an array of dict"
-                "RETURN ONLY THIS ARRAY!"
+                'Something like [{ "label": "2", "box": [[0,20],[20,20],[0,0],[20,0]]}]'
+                "RETURN A VALID JSON LIST OF OBJECTS!!! DO NOT GIVE '''JSON, give raw json"
             ),
             img,
         ],
         config=GenerateContentConfig(temperature=0),
     )
     content = response.text.strip()
-    data = []
+    print(content)
+    content = json.loads(content)
+    print(content)
+    data: List[CharacterData] = []
 
-    if content:
-        try:
-            if content.startswith("```json"):
-                content = content[7:-3].strip()  # Removes ```json ... ```
-            elif content.startswith("```"):
-                content = content[3:-3].strip()  # Removes ``` ... ```
+    for resp in content:
+        neobj = CharacterData(resp["label"], resp["box"])
+        data.append(neobj)
 
-            parsed_data = json.loads(content)
-
-            for item in parsed_data:
-                if "label" in item and "box" in item:
-                    responseobject = ReturnObjectForDataPoints(
-                        item["label"], item["box"]
-                    )
-                    data.append(responseobject)
-                else:
-                    print(f"Skipping malformed item: {item}")
-
-        except json.JSONDecodeError:
-            print(f"Error: Model returned non-JSON text that failed to parse.")
-            print(f"--- Model Response ---")
-            print(content)
-            print(f"----------------------")
-
-    return data
+    return data  # Return the list of objects
 
 
-async def async_handwriting_to_latex(
-    image_path: str, client: genai.Client, model_id: str
-):
+def handwriting_to_latex(image_path: str) -> str:
     img = Image.open(image_path)
-    response = await client.aio.models.generate_content(
-        model=model_id,
-        contents=[
-            (
-                "You are a perfect handwriting-to-LaTeX OCR. "
-                "Convert **only the math** in the image to clean LaTeX. "
-                "Return **only** the LaTeX code inside $$ delimiters. "
-                "No extra text, no explanations."
-            ),
+    response = model.generate_content(
+        [
+            "You are a perfect handwriting-to-LaTeX OCR. "
+            "Convert **only the math** in the image to clean LaTeX. "
+            "Return **only** the LaTeX code inside $$ delimiters. "
+            "No extra text, no explanations.",
             img,
         ],
-        config=GenerateContentConfig(
-            temperature=0,
+        generation_config=genai.GenerationConfig(
+            temperature=0, response_mime_type="text/plain"
         ),
     )
-    if response.text is None:
-        raise ValueError("gemini did not cook")
     text = response.text.strip()
-
     if "$$" in text:
         start = text.find("$$") + 2
         end = text.rfind("$$")
         latex_body = text[start:end].strip()
-        return "$" + latex_body + "$"
+        return (
+            "$" + latex_body + "$"
+        )  # Forces inline math latex, as gemini returns without dollar signs
     else:
         return "There was an error"
 
 
-async def async_ForEachReturnError(
-    image_path: str, client: genai.Client, model_id: str
-):
-    """
-    Asynchronously transcribes a math problem and checks for errors,
-    returning a structured string.
-    """
+def ForEachReturnError(str) -> str:
     img = Image.open(image_path)
-
-    response = await client.aio.models.generate_content(
-        model=model_id,
-        contents=[
-            (
-                "In this json response, a math problem is inscribed. This includes fractions, arthmetic."
-                "transcribe the following problem into an equation"
-                "if error is present for the label that is incorrect, put error=True, expectedresult={answer}"
-                'For example,your input would look somehting like this: { "label": "2", "box": [[0,20],[20,20] ,[0,0] [20, 0] }'
-            ),
-            (
-                'Your output would look something like { "label": "2", "box": [[0,20],[20,20] ,[0,0] [20, 0] , "error":True, "expectedresult=4}'
-            ),
+    response = model.generate_content(
+        [
+            "In this json response, a math problem is inscribed. This includes fractions, arthmetic."
+            "transcribe the following problem into an equation"
+            "if error is present for the label that is incorrect, put error=True, expectedresult={answer}"
+            'For example,your input would look somehting like this: { "label": "2", "box": [[0,20],[20,20] ,[0,0] [20, 0] }',
+            'Your output would look something like { "label": "2", "box": [[0,20],[20,20] ,[0,0] [20, 0] , "error":True, "expectedresult=4}',
             img,
         ],
-        config=GenerateContentConfig(
-            temperature=0,
+        generation_config=genai.GenerationConfig(
+            temperature=0, response_mime_type="text/plain"
         ),
     )
     return response.text
@@ -152,8 +111,9 @@ async def async_ForEachReturnError(
 async def main():
     image_path = "/home/dilyxs/Downloads/sample_let.png"
     print(f"Processing image: {image_path}")
-    response = await ReturnStringy(image_path)
-    print(response)
+    basicpositionlabelling = await ReturnStringy(image_path)
+    print(basicpositionlabelling)
 
 
-asyncio.run(main())
+if __name__ == "main":
+    asyncio.run(main())
