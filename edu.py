@@ -182,15 +182,6 @@ def analyze_step(equation: str) -> StepFeedback:
     )
 
 def process_equation(equation_str: str, tokens, column_boxes=None):
-    """
-    tokens = [
-        {"text": "73", "bbox": (...)},
-        {"text": "+", "bbox": (...)},
-        {"text": "28", "bbox": (...)},
-        {"text": "=", "bbox": (...)},
-        {"text": "90", "bbox": (...)},
-    ]
-    """
     feedback = analyze_step(equation_str)
     return feedback
 
