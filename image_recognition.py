@@ -71,12 +71,12 @@ async def handwriting_to_latex(image_path: str, file=None) -> str:
     (Async version based on the client pattern from ReturnStringy)
     """
     if file is not None:
-        if hasattr(file, "file"):  
+        if hasattr(file, "file"):
             # FastAPI UploadFile
             img = Image.open(file.file)
         else:
             # Already a PIL Image
-            img = file  
+            img = file
     else:
         # Load from path
         img = Image.open(image_path)
@@ -102,19 +102,20 @@ async def handwriting_to_latex(image_path: str, file=None) -> str:
         start = text.find("$$") + 2
         end = text.rfind("$$")
         latex_body = text[start:end].strip()
-        return latex_body  
+        return latex_body
     else:
         return "There was an error"
+
 
 async def main():
     image_path = "/Users/hasan/Downloads/image.jpg"
     print(f"Processing image: {image_path}")
     basicpositionlabelling = await ReturnStringy(image_path)
     print(basicpositionlabelling)
-    
-    #latex = await handwriting_to_latex(image_path)
-    #print("LaTeX:", latex)
+
+    # latex = await handwriting_to_latex(image_path)
+    # print("LaTeX:", latex)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
-
