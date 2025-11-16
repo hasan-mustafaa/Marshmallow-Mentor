@@ -70,7 +70,6 @@ async def generate_hint(error_message: str, language: str = "english") -> str:
     return chat_completion.choices[0].message.content.strip()
 
 
-# ------------------- ASYNC FUNCTION 2: Text to Speech -------------------
 async def text_to_speech(text: str, output_file: str = OUTPUT_FILE) -> None:
     """Send text to ElevenLabs and save as MP3 (async)."""
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
@@ -104,4 +103,3 @@ async def main():
 # ------------------- RUN -------------------
 if __name__ == "__main__":
     asyncio.run(main())
-

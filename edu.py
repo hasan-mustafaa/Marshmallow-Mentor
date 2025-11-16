@@ -173,11 +173,13 @@ async def function():
     return {"message": "true"}
 
 
-@app.post("/", response_model=HintsResponse)
+@app.post("/customvoice")
+@app.post("/hints", response_model=HintsResponse)
 async def returnHints(req: HintsRequest):
     try:
         data = await generate_hint(req.error_message, req.language)
-        HintsResponse(data)
+        ourobject = HintsResponse(response=data)
+        return ourobject
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"incorrect hints as {e}")
 
@@ -196,6 +198,7 @@ async def analyze_image(file: UploadFile = File(...)):
         if not data:
             raise ValueError("Empty file")
         img = Image.open(BytesIO(data)).convert("RGB")
+        img.save("test.img")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
 
@@ -229,5 +232,3 @@ async def analyze_image(file: UploadFile = File(...)):
         datapoints=data,
         annotations=feedback.annotations,
     )
-
-
