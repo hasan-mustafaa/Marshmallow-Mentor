@@ -3,7 +3,8 @@ import os
 import requests
 from dotenv import load_dotenv
 from openai import OpenAI
-import time
+
+# Use customised error message parse 
 
 # ------------------- ENV -------------------
 env_path = os.path.join(os.path.dirname(__file__), ".env")
@@ -36,7 +37,7 @@ VOICE_SETTINGS = {
 }
 
 # Example placeholder — replace when calling your function
-error_message = "NameError: variable not defined"
+error_message = "NameError: variable not defined" # Use customised error message parse 
 
 
 # ------------------- LLM COMPLETION -------------------
@@ -46,7 +47,7 @@ chat_completion = client.chat.completions.create(
         {
             "role": "system",
             "content": (
-                "You are Marshmallow, a friendly AI coding mentor for kids who gives "
+                "You are Marshmallow, a friendly AI math and stem mentor for kids who gives "
                 "short, encouraging 2–3 line hints in the requested language!"
             )
         },
