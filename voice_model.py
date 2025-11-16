@@ -82,7 +82,7 @@ async def text_to_speech(text: str, output_file: str = OUTPUT_FILE) -> None:
 # ------------------- ASYNC MAIN -------------------
 async def main():
     error_message = "NameError: variable not defined" 
-    language = "english" 
+    language = "english"  # Can be changed to any supported language
     hint = await generate_hint(error_message, language)
     # print("Hint:", hint) - Debugging line, uncomment if needed
     await text_to_speech(hint)
