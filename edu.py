@@ -12,6 +12,7 @@ from PIL import Image
 import google.generativeai as genai
 
 from image_recognition import ReturnStringy
+from voice_model import generate_hint
 
 # gemini config
 
@@ -179,6 +180,7 @@ def analyze_step(equation: str) -> StepFeedback:
       - unknown
     """
     term1, op, term2, rhs_student = parse_equation(equation)
+    print(term1, op, term2, rhs_student)
 
     if term1 is None:
         return StepFeedback(
@@ -559,6 +561,15 @@ class AnalyzeEquationResponse(BaseModel):
     image_height: int
 
 
+class HintsRequest(BaseModel):
+    error_message: str
+    language: str
+
+
+class HintsResponse(BaseModel):
+    response: str
+
+
 # 7. Fast api apps
 
 app = FastAPI()
@@ -572,9 +583,18 @@ app.add_middleware(
 )
 
 
-@app.get("")
+@app.get("/")
 async def function():
     return {"message": "true"}
+
+
+@app.post("/", response_model=HintsResponse)
+async def returnHints(req: HintsRequest):
+    try:
+        data = await generate_hint(req.error_message, req.language)
+        HintsResponse(data)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"incorrect hints as {e}")
 
 
 @app.post("/analyze-image", response_model=AnalyzeImageResponse)
