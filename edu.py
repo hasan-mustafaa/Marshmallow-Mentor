@@ -199,6 +199,16 @@ async def returnHints(req: HintsRequest):
         raise HTTPException(status_code=400, detail=f"incorrect hints as {e}")
 
 
+@app.post("/audioforhint", response_model=HintsResponse)
+async def ReturnAudioFile(req: HintsRequest):
+    try:
+        ourobject = await returnHints(req)
+        UrlObject = await getmessage(ourobject)
+        return UrlObject
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"incorrect hints as {e}")
+
+
 @app.post("/analyze-image", response_model=AnalyzeImageResponse)
 async def analyze_image(file: UploadFile = File(...)):
     """
