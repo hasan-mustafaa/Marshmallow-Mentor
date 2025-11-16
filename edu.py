@@ -44,30 +44,11 @@ gemini_model = genai.GenerativeModel("gemini-2.5-flash")
 
 # error types
 
-ErrorType = Literal[
-    "correct",
-    "parse_error",
-    "off_by_one",
-    "too_small",
-    "too_big",
-    "sign_error",
-    "carry_error",
-    "borrow_error",
-    "unknown",
-]
-
-TargetType = Literal[
-    "lhs", "rhs", "operator", "ones_column", "tens_column", "hundreds_column"
-]
-
 
 class Annotation:
-    def __init__(self, target: TargetType, message: str):
+    def __init__(self, target: str, message: str):
         self.target = target
         self.message = message
-
-
-
 
 
 # error logic
@@ -143,10 +124,10 @@ class StepFeedback:
     def __init__(
         self,
         is_correct: bool,
-        error_type: ErrorType,
+        error_type: str,
         correct_value: Optional[int],
-        annotations: List[Annotation],
-        debug: Dict[str, object],
+        annotations: List[str],
+        debug: Dict[str, str],
     ):
         self.is_correct = is_correct
         self.error_type = error_type
@@ -187,8 +168,10 @@ async def analyze_step(equation: str) -> StepFeedback:
         is_correct=response_dict["is_correct"],
         error_type=response_dict["error_type"],
         correct_value=response_dict.get("correct_value"),
-        annotations=response_dict.get("annotations", []),  # Use .get for robustness
-        debug=response_dict.get("debug", {}),
+        annotations=response_dict.get("annotations"),  # Use .get for robustness
+        debug=response_dict.get(
+            "debug",
+        ),
     )
 
 
@@ -347,19 +330,6 @@ def pick_target_point_from_tokens(
     return avg_center_all()
 
 
-def process_equation_with_tokens(
-    equation_str: str, tokens: List[Dict]
-) -> Tuple[StepFeedback, Tuple[float, float]]:
-    """
-    Full pipeline:
-      - run error logic
-      - choose AR target point from bounding boxes
-    """
-    feedback = analyze_step(equation_str)
-    target_point = pick_target_point_from_tokens(feedback, tokens)
-    return feedback, target_point
-
-
 # 4. grid generator for ar walk path
 
 
@@ -449,7 +419,7 @@ class AnalyzeImageResponse(BaseModel):
     analyzeEquationOBJ: AnalyzeEquationRequest
     correct_value: int | None
     datapoints: List[TokenDTO]
-    annotations: List[AnnotationDTO]
+    annotations: List[str]
 
 
 class AnalyzeEquationResponse(BaseModel):
@@ -517,8 +487,9 @@ async def analyze_image(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
 
-    equation_latex = await handwriting_to_latex("",img)
+    equation_latex = await handwriting_to_latex("", img)
     feedback = await analyze_step(equation_latex)
+    print(feedback)
     data = []
     datapoints = await ReturnStringy("", file)
     for datapoint in datapoints:
@@ -544,10 +515,7 @@ async def analyze_image(file: UploadFile = File(...)):
         is_correct=feedback.is_correct,
         correct_value=feedback.correct_value,
         datapoints=data,
-        annotations=[
-            AnnotationDTO(target=a.target, message=a.message)
-            for a in feedback.annotations
-        ],
+        annotations=feedback.annotations,
     )
 
 
@@ -585,4 +553,3 @@ async def analyze_equation(req: AnalyzeEquationRequest):
         image_width=req.image_width,
         image_height=req.image_height,
     )
-
