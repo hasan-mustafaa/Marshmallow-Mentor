@@ -134,7 +134,7 @@ class AnalyzeImageResponse(BaseModel):
     analyzeEquationOBJ: AnalyzeEquationRequest
     correct_value: int | None
     datapoints: List[TokenDTO]
-    annotations: List[str]
+    annotations: List[str] | None
 
 
 class AnalyzeEquationResponse(BaseModel):
@@ -269,5 +269,5 @@ async def analyze_image(file: UploadFile = File(...)):
         is_correct=feedback.is_correct,
         correct_value=feedback.correct_value,
         datapoints=data,
-        annotations=feedback.annotations,
+        annotations=feedback.annotations if not feedback.is_correct else None,
     )
