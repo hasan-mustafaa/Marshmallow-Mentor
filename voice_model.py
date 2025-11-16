@@ -4,44 +4,63 @@ import requests
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# Use customised error message parse 
 
-# ------------------- ENV -------------------
-env_path = os.path.join(os.path.dirname(__file__), ".env")
-load_dotenv(env_path)
+async def generate_sound_output(error_message, language):
+    load_dotenv(env_path)
+    ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    if not ELEVENLABS_API_KEY:
+        raise SystemExit("ERROR: ELEVENLABS_API_KEY missing in .env")
+    if not GROQ_API_KEY:
+        raise SystemExit("ERROR: GROQ_API_KEY missing in .env")
+    OUTPUT_FILE = "output.mp3"
+    URL = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
+    TEXT = generate_hint(error_message, language)
 
-ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    headers = {"xi-api-key": ELEVENLABS_API_KEY, "Content-Type": "application/json"}
 
-if not ELEVENLABS_API_KEY:
-    raise SystemExit("ERROR: ELEVENLABS_API_KEY missing in .env")
-if not GROQ_API_KEY:
-    raise SystemExit("ERROR: GROQ_API_KEY missing in .env")
+    data = {
+        "text": TEXT,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            **VOICE_SETTINGS,
+        },
+    }
 
-# ------------------- SETTINGS -------------------
-language = "english"     
 
-# ------------------- LLM CLIENT -------------------
-client = OpenAI(
-    api_key=GROQ_API_KEY,
-    base_url="https://api.groq.com/openai/v1"
-)
+response = requests.post(URL, json=data, headers=headers)
 
-VOICE_ID = "56AoDkrOh6qfVPDXZ7Pt"
+if response.status_code == 200:
+    with open(OUTPUT_FILE, "wb") as f:
+        f.write(response.content)
+else:
+    raise SystemExit(f"ElevenLabs API Error {response.status_code}: {response.text}")
 
-VOICE_SETTINGS = {
-    "stability": 0.4,
-    "similarity_boost": 0.8,
-    "style": 0.7,
-    "speed": 1.2,
-}
+    VOICE_ID = "56AoDkrOh6qfVPDXZ7Pt"
+
+    VOICE_SETTINGS = {
+        "stability": 0.4,
+        "similarity_boost": 0.8,
+        "style": 0.7,
+        "speed": 1.2,
+    }
 
 # Example placeholder — replace when calling your function
-error_message = "NameError: variable not defined" # Use customised error message parse 
+error_message = "NameError: variable not defined"  # Use customised error message parse
 
 
 # ------------------- LLM COMPLETION -------------------
-def generate_hint(error_message, language):
+async def generate_hint(error_message, language):
+    load_dotenv()
+    ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    if not ELEVENLABS_API_KEY:
+        raise SystemExit("ERROR: ELEVENLABS_API_KEY missing in .env")
+    if not GROQ_API_KEY:
+        raise SystemExit("ERROR: GROQ_API_KEY missing in .env")
+    language = "english"
+    client = OpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
+
     chat_completion = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
@@ -50,7 +69,7 @@ def generate_hint(error_message, language):
                 "content": (
                     "You are Marshmallow, a friendly AI math and STEM mentor for kids "
                     "who gives short, encouraging 2–3 line hints in the requested language!"
-                )
+                ),
             },
             {
                 "role": "user",
@@ -58,27 +77,25 @@ def generate_hint(error_message, language):
                     f'The user got this error: "{error_message}". '
                     f"Give a 2–3 line hint in {language}."
                 ),
-            }
+            },
         ],
     )
     return chat_completion.choices[0].message.content
+
 
 # ------------------- TEXT TO SPEECH -------------------
 OUTPUT_FILE = "output.mp3"
 URL = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
 TEXT = generate_hint(error_message, language)
 
-headers = {
-    "xi-api-key": ELEVENLABS_API_KEY,
-    "Content-Type": "application/json"
-}
+headers = {"xi-api-key": ELEVENLABS_API_KEY, "Content-Type": "application/json"}
 
 data = {
     "text": TEXT,
     "model_id": "eleven_multilingual_v2",
     "voice_settings": {
         **VOICE_SETTINGS,
-    }
+    },
 }
 
 response = requests.post(URL, json=data, headers=headers)
