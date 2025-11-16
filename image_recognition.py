@@ -65,28 +65,38 @@ async def ReturnStringy(image_path: str, file=None) -> List[CharacterData]:
     return data  # Return the list of objects
 
 
-def handwriting_to_latex(image_path: str) -> str:
-    img = Image.open(image_path)
-    response = model.generate_content(
-        [
+async def handwriting_to_latex(image_path: str, file=None) -> str:
+    """
+    Analyzes an image and returns a single LaTeX string.
+    (Async version based on the client pattern from ReturnStringy)
+    """
+    if file:
+        img = Image.open(file.file)
+    else:
+        img = Image.open(image_path)
+
+    # Using the async client pattern from your sample
+    response = await client.aio.models.generate_content(
+        model=model_id,  # Assuming 'model_id' is in scope, like in your sample
+        contents=[
             "You are a perfect handwriting-to-LaTeX OCR. "
             "Convert **only the math** in the image to clean LaTeX. "
             "Return **only** the LaTeX code inside $$ delimiters. "
             "No extra text, no explanations.",
             img,
         ],
-        generation_config=genai.GenerationConfig(
-            temperature=0, response_mime_type="text/plain"
-        ),
+        # Using the config object from your sample,
+        # but keeping the parameters from the original function
+        config=GenerateContentConfig(temperature=0),
     )
+
+    # This post-processing logic is identical to your original function
     text = response.text.strip()
     if "$$" in text:
         start = text.find("$$") + 2
         end = text.rfind("$$")
         latex_body = text[start:end].strip()
-        return (
-            "$" + latex_body + "$"
-        )  # Forces inline math latex, as gemini returns without dollar signs
+        return "$" + latex_body + "$"  # Forces inline math latex
     else:
         return "There was an error"
 
