@@ -40,6 +40,7 @@ async def ReturnStringy(image_path: str, file=None) -> List[CharacterData]:
         contents=[
             (
                 "No extra text, no explanations. "
+                "The only possible things you are allowed to detect [1,2,3,4,5,6,7,8,9,0,=,x,÷,+, -, /]"
                 "Define position [0,0] as the bottom left corner of the image. "
                 "First index of position is x and second one is y. "
                 "For each character, assign it with an array [topleft, topright, leftbottom, rightbottom]. "
