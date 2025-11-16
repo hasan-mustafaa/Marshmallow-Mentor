@@ -37,8 +37,9 @@ VOICE_SETTINGS = {
     "speed": 1.2               # Slightly faster = energetic, kid-like bounce
 }
 
-TEXT = "This is Marshmallow Mentor speaking using ElevenLabs text to speech!"
-OUTPUT_FILE = "output2.mp3"
+TEXT = "你好，我叫棉花糖，我是你的AI导师"
+OUTPUT_FILE = "output.mp3"
+
 
 URL = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
 headers = {
@@ -49,6 +50,21 @@ data = {
     "text": TEXT,
     "model_id": "eleven_multilingual_v2"
 }
+
+
+# === TTS REQUEST ===
+data = {
+    "text": TEXT,
+    "model_id": "eleven_multilingual_v2",
+    "voice_settings": {
+        "stability": 0.4,
+        "similarity_boost": 0.8,
+        "style": 0.7,
+        "speed": 1.2,
+        "language": LANG_CODE    # << IMPORTANT LINE
+    }
+}
+
 
 print("Sending request to ElevenLabs...")
 response = requests.post(URL, json=data, headers=headers)
