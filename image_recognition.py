@@ -100,31 +100,15 @@ async def handwriting_to_latex(image_path: str, file=None) -> str:
     else:
         return "There was an error"
 
-
-def ForEachReturnError(str) -> str:
-    img = Image.open(image_path)
-    response = model.generate_content(
-        [
-            "In this json response, a math problem is inscribed. This includes fractions, arthmetic."
-            "transcribe the following problem into an equation"
-            "if error is present for the label that is incorrect, put error=True, expectedresult={answer}"
-            'For example,your input would look somehting like this: { "label": "2", "box": [[0,20],[20,20] ,[0,0] [20, 0] }',
-            'Your output would look something like { "label": "2", "box": [[0,20],[20,20] ,[0,0] [20, 0] , "error":True, "expectedresult=4}',
-            img,
-        ],
-        generation_config=genai.GenerationConfig(
-            temperature=0, response_mime_type="text/plain"
-        ),
-    )
-    return response.text
-
-
 async def main():
-    image_path = "/home/dilyxs/Downloads/sample_let.png"
+    image_path = "/Users/hasan/Downloads/image.jpg"
     print(f"Processing image: {image_path}")
     basicpositionlabelling = await ReturnStringy(image_path)
     print(basicpositionlabelling)
+    
+    #latex = await handwriting_to_latex(image_path)
+    #print("LaTeX:", latex)
 
-
-if __name__ == "main":
+if __name__ == "__main__":
     asyncio.run(main())
+
