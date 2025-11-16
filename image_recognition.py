@@ -70,9 +70,15 @@ async def handwriting_to_latex(image_path: str, file=None) -> str:
     Analyzes an image and returns a single LaTeX string.
     (Async version based on the client pattern from ReturnStringy)
     """
-    if file:
-        img = Image.open(file.file)
+    if file is not None:
+        if hasattr(file, "file"):  
+            # FastAPI UploadFile
+            img = Image.open(file.file)
+        else:
+            # Already a PIL Image
+            img = file  
     else:
+        # Load from path
         img = Image.open(image_path)
 
     # Using the async client pattern from your sample
@@ -96,7 +102,7 @@ async def handwriting_to_latex(image_path: str, file=None) -> str:
         start = text.find("$$") + 2
         end = text.rfind("$$")
         latex_body = text[start:end].strip()
-        return "$" + latex_body + "$"  # Forces inline math latex
+        return latex_body  
     else:
         return "There was an error"
 
