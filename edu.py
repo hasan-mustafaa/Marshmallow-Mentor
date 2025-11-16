@@ -530,20 +530,21 @@ class TokenDTO(BaseModel):
     bbox: Tuple[float, float, float, float]
 
 
-class AnalyzeImageResponse(BaseModel):
-    equation_str: str
-    error_type: str
-    is_correct: bool
-    correct_value: int | None
-    datapoints: List[TokenDTO]
-    annotations: List[AnnotationDTO]
-
-
 class AnalyzeEquationRequest(BaseModel):
     equation_str: str
     tokens: List[TokenDTO]
     image_width: int
     image_height: int
+
+
+class AnalyzeImageResponse(BaseModel):
+    equation_str: str
+    error_type: str
+    is_correct: bool
+    analyzeEquationOBJ: AnalyzeEquationRequest
+    correct_value: int | None
+    datapoints: List[TokenDTO]
+    annotations: List[AnnotationDTO]
 
 
 class AnalyzeEquationResponse(BaseModel):
@@ -585,6 +586,7 @@ async def analyze_image(file: UploadFile = File(...)):
         if not data:
             raise ValueError("Empty file")
         img = Image.open(BytesIO(data)).convert("RGB")
+        img.width
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
 
@@ -612,8 +614,15 @@ async def analyze_image(file: UploadFile = File(...)):
         newobject = TokenDTO(text=label, bbox=[x1, y1, x2, y2])
         data.append(newobject)
 
+    RequestObg = AnalyzeEquationRequest(
+        equation_str=equation_str,
+        tokens=data,
+        image_width=img.width,
+        image_height=img.height,
+    )
     return AnalyzeImageResponse(
         equation_str=equation_str,
+        analyzeEquationOBJ=RequestObg,
         error_type=feedback.error_type,
         is_correct=feedback.is_correct,
         correct_value=feedback.correct_value,
