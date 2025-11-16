@@ -12,7 +12,8 @@ from PIL import Image
 import google.generativeai as genai
 
 from image_recognition import ReturnStringy
-from voice_model import generate_hint
+from parse_equation import parse_equation_v2
+from voice_model import generate_code, generate_hint
 
 # gemini config
 
@@ -167,7 +168,23 @@ def detect_borrow(term1, term2, student, correct) -> bool:
     return False
 
 
-def analyze_step(equation: str) -> StepFeedback:
+class StepFeedback:
+    def __init__(
+        self,
+        is_correct: bool,
+        error_type: ErrorType,
+        correct_value: Optional[int],
+        annotations: List[Annotation],
+        debug: Dict[str, object],
+    ):
+        self.is_correct = is_correct
+        self.error_type = error_type
+        self.correct_value = correct_value
+        self.annotations = annotations
+        self.debug = debug
+
+
+async def analyze_step(equation: str) -> StepFeedback:
     """
     Error detector:
       - parse_error
@@ -179,112 +196,28 @@ def analyze_step(equation: str) -> StepFeedback:
       - too_small / too_big
       - unknown
     """
-    term1, op, term2, rhs_student = parse_equation(equation)
-    print(term1, op, term2, rhs_student)
-
-    if term1 is None:
-        return StepFeedback(
-            False,
-            "parse_error",
-            None,
-            [Annotation("lhs", "Format should be like: 73 + 28 = 90")],
-            {"raw": equation},
-        )
-
-    rhs_correct = compute_correct(term1, op, term2)
-    if rhs_correct is None:
-        return StepFeedback(
-            False,
-            "parse_error",
-            None,
-            [Annotation("operator", "Invalid or non-integer result")],
-            {},
-        )
-
-    # exactly correct
-    if rhs_student == rhs_correct:
-        return StepFeedback(
-            True, "correct", rhs_correct, [Annotation("rhs", "Correct!")], {}
-        )
-
-    # off by one
-    if abs(rhs_student - rhs_correct) == 1:
-        return StepFeedback(
-            False,
-            "off_by_one",
-            rhs_correct,
-            [Annotation("rhs", "So close! Off by 1.")],
-            {},
-        )
-
-    # sign error
-    if op in {"+", "-"}:
-        wrong_op = "-" if op == "+" else "+"
-        alt = compute_correct(term1, wrong_op, term2)
-        if alt == rhs_student:
-            return StepFeedback(
-                False,
-                "sign_error",
-                rhs_correct,
-                [
-                    Annotation("operator", f"Used '{wrong_op}' instead of '{op}'."),
-                    Annotation("rhs", "Try again using the correct sign."),
-                ],
-                {},
-            )
-
-    # carry mistake
-    if op == "+" and detect_carry(term1, term2, rhs_student, rhs_correct):
-        return StepFeedback(
-            False,
-            "carry_error",
-            rhs_correct,
-            [
-                Annotation("ones_column", "Check the ones column – carrying needed."),
-                Annotation("tens_column", "The tens column changes when carrying."),
-            ],
-            {},
-        )
-
-    # borrow mistake
-    if op == "-" and detect_borrow(term1, term2, rhs_student, rhs_correct):
-        return StepFeedback(
-            False,
-            "borrow_error",
-            rhs_correct,
-            [
-                Annotation("ones_column", "You needed to borrow here."),
-                Annotation("tens_column", "Borrowing affects the tens column."),
-            ],
-            {},
-        )
-
-    # too small / too big
-    if rhs_student < rhs_correct:
-        return StepFeedback(
-            False,
-            "too_small",
-            rhs_correct,
-            [Annotation("rhs", "Your answer is too small.")],
-            {},
-        )
-
-    if rhs_student > rhs_correct:
-        return StepFeedback(
-            False,
-            "too_big",
-            rhs_correct,
-            [Annotation("rhs", "Your answer is too big.")],
-            {},
-        )
-
-    # fallback
+    left_expression, right_expression, left_value, right_value, is_correct = (
+        parse_equation_v2(equation)
+    )
+    input = f"equation: {equation}, left_expression: {left_expression}, right_expression: {right_expression}, left_value: {left_value}, right_value: {right_value}, is_correct: {is_correct}"
+    response = await generate_code(
+        (
+            "You are a model that returns a JSON analysis of a math equation. "
+            "You must return a JSON with the exact following format: "
+            '{"is_correct": <bool>, "error_type": "<str>", "correct_value": <int or null>, '
+            '"annotations": ["<string hint 1>", "<string hint 2>"], '
+            '"debug": {"explanation": "<string explanation>", "solution": "<string solution>"}}. '
+            "SEND it as a pure {} DO NOT INCLUDE three commas or JSON"
+        ),
+        input,
+    )
+    response_dict = json.loads(response)
     return StepFeedback(
-        False,
-        "unknown",
-        rhs_correct,
-        [Annotation("rhs", "Something is off. Try again.")],
-        {},
+        is_correct=response_dict["is_correct"],
+        error_type=response_dict["error_type"],
+        correct_value=response_dict.get("correct_value"),
+        annotations=response_dict.get("annotations", []),  # Use .get for robustness
+        debug=response_dict.get("debug", {}),
     )
 
 
@@ -314,7 +247,6 @@ def cluster_rows(tokens: List[Dict]) -> List[List[Dict]]:
     heights = [_height(t["bbox"]) for t in tokens_sorted]
     avg_h = sum(heights) / len(heights) if heights else 1.0
     threshold = avg_h * 0.6  # tweakable
-
     rows: List[List[Dict]] = []
 
     for t in tokens_sorted:
@@ -611,7 +543,6 @@ async def analyze_image(file: UploadFile = File(...)):
         if not data:
             raise ValueError("Empty file")
         img = Image.open(BytesIO(data)).convert("RGB")
-        img.width
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
 
