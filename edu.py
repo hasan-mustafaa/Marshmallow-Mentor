@@ -11,9 +11,10 @@ from pathlib import Path
 from PIL import Image
 import google.generativeai as genai
 
-from image_recognition import ReturnStringy
+from image_recognition import ReturnStringy, handwriting_to_latex
 from parse_equation import parse_equation_v2
 from voice_model import generate_code, generate_hint
+
 
 # gemini config
 
@@ -66,20 +67,7 @@ class Annotation:
         self.message = message
 
 
-class StepFeedback:
-    def __init__(
-        self,
-        is_correct: bool,
-        error_type: ErrorType,
-        correct_value: Optional[int],
-        annotations: List[Annotation],
-        debug: Dict[str, object],
-    ):
-        self.is_correct = is_correct
-        self.error_type = error_type
-        self.correct_value = correct_value
-        self.annotations = annotations
-        self.debug = debug
+
 
 
 # error logic
@@ -116,23 +104,6 @@ def parse_equation(eq: str):
         return None, None, None, None
 
     return t1, op, t2, rhs_student
-
-
-def compute_correct(term1: int, op: str, term2: int) -> Optional[int]:
-    "Compute the correct result only for integer division"
-    if op == "+":
-        return term1 + term2
-    if op == "-":
-        return term1 - term2
-    if op == "*":
-        return term1 * term2
-    if op == "/":
-        if term2 == 0:
-            return None
-        if term1 % term2 != 0:
-            return None
-        return term1 // term2
-    return None
 
 
 def _digits(n: int) -> List[int]:
@@ -546,18 +517,8 @@ async def analyze_image(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
 
-    try:
-        latex = handwriting_image_to_latex(img)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Gemini OCR failed: {e}")
-
-    equation_str = latex_to_equation(latex)
-    if not equation_str:
-        raise HTTPException(
-            status_code=422, detail="Could not extract equation from image"
-        )
-
-    feedback = analyze_step(equation_str)
+    equation_latex = await handwriting_to_latex("",img)
+    feedback = await analyze_step(equation_latex)
     data = []
     datapoints = await ReturnStringy("", file)
     for datapoint in datapoints:
@@ -571,13 +532,13 @@ async def analyze_image(file: UploadFile = File(...)):
         data.append(newobject)
 
     RequestObg = AnalyzeEquationRequest(
-        equation_str=equation_str,
+        equation_str=equation_latex,
         tokens=data,
         image_width=img.width,
         image_height=img.height,
     )
     return AnalyzeImageResponse(
-        equation_str=equation_str,
+        equation_str=equation_latex,
         analyzeEquationOBJ=RequestObg,
         error_type=feedback.error_type,
         is_correct=feedback.is_correct,
@@ -624,3 +585,4 @@ async def analyze_equation(req: AnalyzeEquationRequest):
         image_width=req.image_width,
         image_height=req.image_height,
     )
+

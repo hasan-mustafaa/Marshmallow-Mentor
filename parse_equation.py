@@ -1,11 +1,6 @@
 from sympy import symbols, N
 from sympy.parsing.latex import parse_latex
 
-latex_string = latex_string = (
-    r"3\left(\frac{3}{4} + \frac{5}{6}\right) = \frac{19}{12} - 1"
-)
-
-
 def parse_equation_v2(latex_string: str):
     # Format Latex Equation
     equation = latex_string.strip().replace(" ", "")
