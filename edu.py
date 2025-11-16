@@ -1,4 +1,5 @@
 import os
+from voice_model import text_to_speech
 import uuid
 import json
 from io import BytesIO
@@ -15,9 +16,10 @@ import google.generativeai as genai
 from image_recognition import ReturnStringy, handwriting_to_latex
 from parse_equation import parse_equation_v2
 from voice_model import generate_code, generate_hint
-
+from fastapi.staticfiles import StaticFiles
 
 # gemini config
+
 
 BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / ".env"
@@ -160,6 +162,7 @@ class HintsResponse(BaseModel):
 
 app = FastAPI()
 
+app.mount("/audio", StaticFiles(directory="static/audio"), name="audio_files")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -174,7 +177,18 @@ async def function():
     return {"message": "true"}
 
 
-@app.post("/customvoice")
+@app.post("/customvoice", response_model=HintsResponse)
+async def getmessage(req: HintsResponse):
+    try:
+        baseurl = "http://148.230.90.188:8000/"
+        id = uuid.uuid4()
+        await text_to_speech(req.response, f"./static/audio/{id}_audio.mp3")
+        public_url = f"{baseurl}audio/{id}_audio.mp3"
+        return HintsResponse(response=public_url)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"incorrect format as {e}")
+
+
 @app.post("/hints", response_model=HintsResponse)
 async def returnHints(req: HintsRequest):
     try:
