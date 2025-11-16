@@ -1,77 +1,89 @@
-#Undertand how this works + fine tune voice model
-
+# marshmallow_mentor.py
 import os
 import requests
 from dotenv import load_dotenv
+from openai import OpenAI
+import time
 
-# === DEBUG: Show current directory ===
-print("Current working directory:", os.getcwd())
-print("Looking for .env in this folder...")
-
-# Load .env from the same directory as this script
-env_path = os.path.join(os.path.dirname(__file__), '.env')
-print(f"Loading .env from: {env_path}")
-
+# ------------------- ENV -------------------
+env_path = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(env_path)
 
-# === CONFIGURATION ===
-API_KEY = os.getenv("ELEVENLABS_API_KEY")
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-if not API_KEY:
-    print("ERROR: ELEVENLABS_API_KEY not found!")
-    print("Make sure:")
-    print("  1. .env file is in the same folder as this script")
-    print("  2. It contains: ELEVENLABS_API_KEY=your_key_here")
-    print("  3. No quotes, no spaces around =")
-    raise SystemExit
+if not ELEVENLABS_API_KEY:
+    raise SystemExit("ERROR: ELEVENLABS_API_KEY missing in .env")
+if not GROQ_API_KEY:
+    raise SystemExit("ERROR: GROQ_API_KEY missing in .env")
 
-print(f"API Key loaded: {API_KEY[:10]}...{API_KEY[-4:]}")  # Show partial key
+# ------------------- SETTINGS -------------------
+language = "english"     # <<< your requested variable
 
-# === REST OF YOUR CODE ===
+# ------------------- LLM CLIENT -------------------
+client = OpenAI(
+    api_key=GROQ_API_KEY,
+    base_url="https://api.groq.com/openai/v1"
+)
+
 VOICE_ID = "56AoDkrOh6qfVPDXZ7Pt"
 
 VOICE_SETTINGS = {
-    "stability": 0.4,          # Lower = more expressive/wild (cartoony variation)
-    "similarity_boost": 0.8,   # Keeps it true to the voice's charm
-    "style": 0.7,              # Higher = more dramatic/exaggerated (cartoon flair)
-    "speed": 1.2               # Slightly faster = energetic, kid-like bounce
+    "stability": 0.4,
+    "similarity_boost": 0.8,
+    "style": 0.7,
+    "speed": 1.2,
 }
 
-TEXT = "你好，我叫棉花糖，我是你的AI导师"
+# Example placeholder — replace when calling your function
+error_message = "NameError: variable not defined"
+
+
+# ------------------- LLM COMPLETION -------------------
+chat_completion = client.chat.completions.create(
+    model="llama-3.3-70b-versatile",
+    messages=[
+        {
+            "role": "system",
+            "content": (
+                "You are Marshmallow, a friendly AI coding mentor for kids who gives "
+                "short, encouraging 2–3 line hints in the requested language!"
+            )
+        },
+        {
+            "role": "user",
+            "content": (
+                f'The user got this error: "{error_message}". '
+                f"Give a 2–3 line hint in {language}."
+            ),
+        }
+    ],
+)
+
+TEXT = chat_completion.choices[0].message.content
+
+# ------------------- TEXT TO SPEECH -------------------
 OUTPUT_FILE = "output.mp3"
 
-
 URL = f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}"
+
 headers = {
-    "xi-api-key": API_KEY,
+    "xi-api-key": ELEVENLABS_API_KEY,
     "Content-Type": "application/json"
 }
-data = {
-    "text": TEXT,
-    "model_id": "eleven_multilingual_v2"
-}
 
-
-# === TTS REQUEST ===
 data = {
     "text": TEXT,
     "model_id": "eleven_multilingual_v2",
     "voice_settings": {
-        "stability": 0.4,
-        "similarity_boost": 0.8,
-        "style": 0.7,
-        "speed": 1.2,
-        "language": LANG_CODE    # << IMPORTANT LINE
+        **VOICE_SETTINGS,
     }
 }
 
-
-print("Sending request to ElevenLabs...")
 response = requests.post(URL, json=data, headers=headers)
 
 if response.status_code == 200:
     with open(OUTPUT_FILE, "wb") as f:
         f.write(response.content)
-    print(f"SUCCESS! Saved as '{OUTPUT_FILE}'")
 else:
-    print(f"API Error {response.status_code}: {response.text}")
+    raise SystemExit(f"ElevenLabs API Error {response.status_code}: {response.text}")
