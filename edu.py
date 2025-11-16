@@ -1,4 +1,5 @@
 import os
+import uuid
 import json
 from io import BytesIO
 from typing import List, Optional, Literal, Tuple, Dict
@@ -197,8 +198,22 @@ async def analyze_image(file: UploadFile = File(...)):
         data = await file.read()
         if not data:
             raise ValueError("Empty file")
-        img = Image.open(BytesIO(data)).convert("RGB")
-        img.save("test.img")
+        original_img = Image.open(BytesIO(data))
+        original_format = original_img.format
+        img = original_img.convert("RGB")
+        if not original_format:
+            file_extension = (
+                "jpg"  # Defaulting to jpg, but you could also raise an error
+            )
+        else:
+            file_extension = original_format.lower()
+        if file_extension == "jpeg":
+            file_extension = "jpg"
+        base_filename = str(uuid.uuid4())
+        save_path = f"./{base_filename}.{file_extension}"
+        print(save_path)
+
+        img.save(save_path)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid image: {e}")
 
