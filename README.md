@@ -1,3 +1,7 @@
+Demo Video:
+https://youtu.be/1WtwLWLUjhA
+
+
 Inspiration
 Having younger siblings who might need assistance with their work, and sometimes I’m just not able to make it on time; however, Marshmallow can take my place, and even though it can’t replace me, it’s the next best thing in their educational journey, leveraging cutting-edge AI tools without potentially harming them through unrestricted access.
 
